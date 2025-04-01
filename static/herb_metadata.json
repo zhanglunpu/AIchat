@@ -1,0 +1,194 @@
+[
+  {
+    "id": "jinyinhua",
+    "name": "金银花",
+    "pinyin": "jinyinhua",
+    "description": "金银花为忍冬科植物忍冬的干燥花蕾或带初开的花。性寒,味甘。具有清热解毒、疏散风热的功效。主治热毒血痢、温病发热、热毒疮疡等症。",
+    "model_file": "jinyinhua.glb",
+    "properties": {
+      "taste": "甘",
+      "nature": "寒",
+      "meridians": [
+        "肺",
+        "心",
+        "胃"
+      ],
+      "functions": [
+        "清热解毒",
+        "疏散风热"
+      ]
+    }
+  },
+  {
+    "id": "huaihua",
+    "name": "槐花",
+    "pinyin": "huaihua",
+    "description": "槐花为豆科植物槐的干燥花蕾。性寒,味苦。具有清热凉血、止血的功效。主治血热出血、痔疮出血、便血、崩漏等症。",
+    "model_file": "huaihua.glb",
+    "properties": {
+      "taste": "苦",
+      "nature": "寒",
+      "meridians": [
+        "肝",
+        "大肠"
+      ],
+      "functions": [
+        "清热凉血",
+        "止血"
+      ]
+    }
+  },
+  {
+    "id": "gouqi",
+    "name": "枸杞",
+    "pinyin": "gouqi",
+    "description": "枸杞为茄科植物宁夏枸杞的干燥成熟果实。性平,味甘。具有滋补肝肾、益精明目的功效。主治肝肾阴虚、精血不足、目昏、腰膝酸软等症。",
+    "model_file": "gouqi.glb",
+    "properties": {
+      "taste": "甘",
+      "nature": "平",
+      "meridians": [
+        "肝",
+        "肾"
+      ],
+      "functions": [
+        "滋补肝肾",
+        "益精明目"
+      ]
+    }
+  },
+  {
+    "id": "dangshen",
+    "name": "党参",
+    "pinyin": "dangshen",
+    "description": "党参为桔梗科植物党参的干燥根。性平,味甘。具有补中益气、生津的功效。主治脾肺气虚、食少倦怠、咳嗽气短、内热消渴等症。",
+    "model_file": "dangshen.glb",
+    "properties": {
+      "taste": "甘",
+      "nature": "平",
+      "meridians": [
+        "脾",
+        "肺"
+      ],
+      "functions": [
+        "补中益气",
+        "生津"
+      ]
+    }
+  },
+  {
+    "id": "baihe",
+    "name": "百合",
+    "pinyin": "baihe",
+    "description": "百合为百合科植物卷丹、细叶百合等的干燥鳞茎。性寒,味甘。具有养阴润肺、清心安神的功效。主治阴虚久咳、心烦失眠、精神恍惚等症。",
+    "model_file": "baihe.glb",
+    "properties": {
+      "taste": "甘",
+      "nature": "寒",
+      "meridians": [
+        "心",
+        "肺"
+      ],
+      "functions": [
+        "养阴润肺",
+        "清心安神"
+      ]
+    }
+  },
+  {
+    "id": "jinyinhua",
+    "name": "金银花",
+    "pinyin": "jinyinhua",
+    "description": "金银花为忍冬科植物忍冬的干燥花蕾或带初开的花。性寒,味甘。具有清热解毒、疏散风热的功效。主治热毒血痢、温病发热、热毒疮疡等症。",
+    "model_file": "jinyinhua.glb",
+    "properties": {
+      "taste": "甘",
+      "nature": "寒",
+      "meridians": [
+        "肺",
+        "心",
+        "胃"
+      ],
+      "functions": [
+        "清热解毒",
+        "疏散风热"
+      ]
+    }
+  },
+  {
+    "id": "huaihua",
+    "name": "槐花",
+    "pinyin": "huaihua",
+    "description": "槐花为豆科植物槐的干燥花蕾。性寒,味苦。具有清热凉血、止血的功效。主治血热出血、痔疮出血、便血、崩漏等症。",
+    "model_file": "huaihua.glb",
+    "properties": {
+      "taste": "苦",
+      "nature": "寒",
+      "meridians": [
+        "肝",
+        "大肠"
+      ],
+      "functions": [
+        "清热凉血",
+        "止血"
+      ]
+    }
+  },
+  {
+    "id": "gouqi",
+    "name": "枸杞",
+    "pinyin": "gouqi",
+    "description": "枸杞为茄科植物宁夏枸杞的干燥成熟果实。性平,味甘。具有滋补肝肾、益精明目的功效。主治肝肾阴虚、精血不足、目昏、腰膝酸软等症。",
+    "model_file": "gouqi.glb",
+    "properties": {
+      "taste": "甘",
+      "nature": "平",
+      "meridians": [
+        "肝",
+        "肾"
+      ],
+      "functions": [
+        "滋补肝肾",
+        "益精明目"
+      ]
+    }
+  },
+  {
+    "id": "dangshen",
+    "name": "党参",
+    "pinyin": "dangshen",
+    "description": "党参为桔梗科植物党参的干燥根。性平,味甘。具有补中益气、生津的功效。主治脾肺气虚、食少倦怠、咳嗽气短、内热消渴等症。",
+    "model_file": "dangshen.glb",
+    "properties": {
+      "taste": "甘",
+      "nature": "平",
+      "meridians": [
+        "脾",
+        "肺"
+      ],
+      "functions": [
+        "补中益气",
+        "生津"
+      ]
+    }
+  },
+  {
+    "id": "baihe",
+    "name": "百合",
+    "pinyin": "baihe",
+    "description": "百合为百合科植物卷丹、细叶百合等的干燥鳞茎。性寒,味甘。具有养阴润肺、清心安神的功效。主治阴虚久咳、心烦失眠、精神恍惚等症。",
+    "model_file": "baihe.glb",
+    "properties": {
+      "taste": "甘",
+      "nature": "寒",
+      "meridians": [
+        "心",
+        "肺"
+      ],
+      "functions": [
+        "养阴润肺",
+        "清心安神"
+      ]
+    }
+  }
+]

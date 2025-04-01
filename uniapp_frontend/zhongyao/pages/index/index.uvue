@@ -1,0 +1,1136 @@
+<template>
+	<view class="page">
+		<!-- 顶部装饰背景 -->
+		<view class="header-bg">
+			<image class="header-bg-image" src="/static/images/background.jpg" mode="aspectFill"></image>
+			<view class="header-overlay"></view>
+		</view>
+		
+		<!-- 标题区域 -->
+		<view class="header">
+			<image class="logo" src="/static/images/logo.png" mode="aspectFit"></image>
+			<view class="title-container">
+				<text class="title">中药材智能搜索系统</text>
+				<text class="subtitle">传承千年智慧 · 数字科技赋能</text>
+			</view>
+		</view>
+		
+		<!-- 功能导航 -->
+		<view class="nav-container">
+			<view class="nav-item" :class="{ active: activeTab === 'image' }" @tap="switchTab('image')">
+				<view class="nav-icon">
+					<text class="iconfont icon-camera"></text>
+				</view>
+				<text class="nav-text">图像识别</text>
+			</view>
+			<view class="nav-item" :class="{ active: activeTab === 'search' }" @tap="switchTab('search')">
+				<view class="nav-icon">
+					<text class="iconfont icon-search"></text>
+				</view>
+				<text class="nav-text">智能检索</text>
+			</view>
+			<view class="nav-item" :class="{ active: activeTab === 'ai' }" @tap="switchTab('ai')">
+				<view class="nav-icon">
+					<text class="iconfont icon-ai"></text>
+				</view>
+				<text class="nav-text">AI问药</text>
+			</view>
+		</view>
+		
+		<!-- 内容区域 -->
+		<view class="content-container">
+			<!-- 图像识别内容 -->
+			<view v-if="activeTab === 'image'" class="content-section">
+				<view class="card">
+					<view class="card-body">
+						<view class="image-section">
+							<view v-if="selectedImage" class="image-preview-container">
+								<image class="image-preview" :src="selectedImage" mode="aspectFill"></image>
+								<view class="image-overlay" @tap="chooseImage">
+									<text class="overlay-text">点击更换</text>
+								</view>
+							</view>
+							<view v-else class="image-upload" @tap="chooseImage">
+								<view class="upload-icon">
+									<text class="iconfont icon-upload"></text>
+								</view>
+								<text class="upload-text">上传中药图片</text>
+								<text class="upload-desc">支持拍照或从相册选择</text>
+							</view>
+						</view>
+						
+						<view class="action-area">
+							<button class="btn-identify" @tap="searchByImage" :disabled="!selectedImage">
+								<text class="btn-text">开始识别</text>
+							</button>
+							<text class="tips-text">拍摄清晰完整的药材图片，可提高识别准确率</text>
+						</view>
+					</view>
+				</view>
+				
+				<view class="card info-card">
+					<view class="card-header">
+						<text class="card-title">识别说明</text>
+					</view>
+					<view class="card-body">
+						<view class="info-item">
+							<text class="info-icon iconfont icon-tips"></text>
+							<text class="info-text">请尽量在明亮环境下拍摄药材</text>
+						</view>
+						<view class="info-item">
+							<text class="info-icon iconfont icon-tips"></text>
+							<text class="info-text">单一药材识别效果最佳</text>
+						</view>
+						<view class="info-item">
+							<text class="info-icon iconfont icon-tips"></text>
+							<text class="info-text">识别成功后可查看3D模型及详细信息</text>
+						</view>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 智能检索内容 -->
+			<view v-if="activeTab === 'search'" class="content-section">
+				<view class="card">
+					<view class="card-body">
+						<view class="search-container">
+							<view class="search-box">
+								<text class="search-icon iconfont icon-search"></text>
+								<input 
+									class="search-input" 
+									type="text" 
+									placeholder="请输入症状、功效或药材名称..." 
+									v-model="searchText"
+									@confirm="searchByText"
+								/>
+								<view v-if="searchText" class="clear-icon" @tap="searchText = ''">
+									<text class="iconfont icon-clear"></text>
+								</view>
+							</view>
+							
+							<button class="btn-search" @tap="searchByText">
+								<text class="btn-text">开始检索</text>
+							</button>
+						</view>
+						
+						<view class="slider-container">
+							<view class="slider-header">
+								<text class="slider-title">相关度阈值</text>
+								<text class="slider-value">{{relevanceThreshold}}%</text>
+							</view>
+							<slider 
+								class="custom-slider" 
+								:min="30" 
+								:max="95" 
+								:step="5" 
+								:value="relevanceThreshold"
+								activeColor="#8D6E63"
+								backgroundColor="#EFEBE9"
+								blockColor="#5D4037"
+								@change="onThresholdChange"
+							/>
+							<view class="slider-labels">
+								<text class="label-min">较宽松</text>
+								<text class="label-max">较严格</text>
+							</view>
+						</view>
+					</view>
+				</view>
+				
+				<view class="card tags-card">
+					<view class="card-header">
+						<text class="card-title">常见检索</text>
+					</view>
+					<view class="card-body">
+						<view class="tags-container">
+							<view class="tag" v-for="(tag, index) in commonTags" :key="index" @tap="quickSearch(tag)">
+								<text class="tag-text">{{tag}}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+			</view>
+			
+			<!-- AI问药内容 -->
+			<view v-if="activeTab === 'ai'" class="content-section">
+				<view class="card chat-card">
+					<view class="chat-container">
+						<scroll-view scroll-y="true" class="chat-messages" :scroll-top="scrollTop" @scrolltoupper="loadMoreMessages">
+							<view class="chat-date">
+								<text class="date-text">{{getCurrentDate()}}</text>
+							</view>
+							
+							<view v-for="(msg, index) in chatMessages" :key="index" class="message-wrapper" :class="msg.type">
+								<view v-if="msg.type === 'ai'" class="avatar">
+									<text class="avatar-text">医</text>
+								</view>
+								<view class="message-item" :class="msg.type">
+									<view class="message-content">
+										<text>{{ msg.content }}</text>
+									</view>
+									<view v-if="msg.type === 'ai'" class="message-time">
+										<text class="time-text">智能AI</text>
+									</view>
+								</view>
+							</view>
+							
+							<view class="message-end" v-if="chatMessages.length > 0"></view>
+						</scroll-view>
+						
+						<view class="chat-input-area">
+							<input 
+								class="chat-input" 
+								type="text" 
+								v-model="chatInput"
+								placeholder="请输入您的问题..."
+								:disabled="isAiAnswering"
+								@confirm="sendQuestion"
+							/>
+							<view class="chat-actions">
+								<button class="btn-voice" :disabled="isAiAnswering">
+									<text class="iconfont icon-voice"></text>
+								</button>
+								<button class="btn-send" :disabled="!chatInput.trim() || isAiAnswering" @tap="sendQuestion">
+									<text class="iconfont icon-send"></text>
+								</button>
+							</view>
+						</view>
+					</view>
+				</view>
+				
+				<view class="card suggestion-card">
+					<view class="card-header">
+						<text class="card-title">您可以这样问</text>
+					</view>
+					<view class="card-body">
+						<view class="suggestion-container">
+							<view class="suggestion" v-for="(item, index) in suggestions" :key="index" @tap="usesuggestion(item)">
+								<text class="suggestion-text">{{item}}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 加载指示器 -->
+		<view v-if="isSearching" class="loading-overlay">
+			<view class="loader">
+				<view class="loader-circle"></view>
+				<view class="loader-text">
+					<text>{{loadingText}}</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+import { view3DModel, processHerbData } from '../../utils/model3d.js';
+import { API_CONFIG, getApiUrl, getUrlWithParams } from '../../config/api.js';
+
+export default {
+	data() {
+		return {
+			activeTab: 'image',
+			selectedImage: '',
+			searchText: '',
+			relevanceThreshold: 60,
+			isSearching: false,
+			loadingText: '处理中...',
+			chatMessages: [],
+			chatInput: '',
+			isAiAnswering: false,
+			scrollTop: 0,
+			commonTags: ['清热解毒', '补气养血', '祛风湿', '安神助眠', '健脾胃', '润肺止咳'],
+			suggestions: [
+				'金银花的功效与作用是什么？',
+				'黄芪和党参可以一起吃吗？',
+				'请介绍一下当归的药性特点',
+				'有哪些药材适合春季养生？'
+			]
+		}
+	},
+	onLoad() {
+		// 初始化欢迎消息
+		if (this.chatMessages.length === 0) {
+			this.chatMessages.push({
+				type: 'ai',
+				content: '您好，我是中药智能顾问，基于DeepSeek大语言模型开发。我可以回答您关于中药材的功效、用法、禁忌等问题，请问有什么可以帮助您的？'
+			});
+		}
+		
+		// 模拟API延迟，实际使用时请删除
+		setTimeout(() => {
+			uni.hideLoading();
+		}, 500);
+	},
+	methods: {
+		// 切换标签页
+		switchTab(tab) {
+			this.activeTab = tab;
+		},
+		
+		// 图片选择
+		chooseImage() {
+			uni.chooseImage({
+				count: 1,
+				sizeType: ['original', 'compressed'],
+				sourceType: ['album', 'camera'],
+				success: (res) => {
+					console.log('选择图片成功:', res);
+					this.selectedImage = res.tempFilePaths[0];
+				},
+				fail: (err) => {
+					console.error('选择图片失败:', err);
+				}
+			});
+		},
+		
+		// 图片搜索
+		searchByImage() {
+			if (!this.selectedImage) {
+				uni.showToast({
+					title: '请先选择图片',
+					icon: 'none',
+					duration: 2000
+				});
+				return;
+			}
+			
+			this.isSearching = true;
+			this.loadingText = '正在识别药材...';
+			
+			uni.uploadFile({
+				url: getApiUrl(API_CONFIG.SEARCH.IMAGE),
+				filePath: this.selectedImage,
+				name: 'file',
+				formData: {
+					'min_area_ratio': '0.1',
+					'response_type': 'json'
+				},
+				success: (res) => {
+					const responseData = JSON.parse(res.data);
+					console.log('图片搜索结果:', responseData);
+					
+					if (responseData.herbs && responseData.herbs.length > 0) {
+						const topResult = responseData.herbs[0];
+						console.log('最相似的药材:', topResult.name);
+						
+						const herbData = processHerbData(topResult);
+						this.view3DModel(herbData);
+					} else {
+						uni.showModal({
+							title: '未识别出药材',
+							content: '很抱歉,未能识别出图片中的中药材。\n\n您可以尝试:\n1. 拍摄更清晰的图片\n2. 调整光线,避免反光或阴影\n3. 尝试不同角度拍摄\n4. 使用文字搜索功能',
+							confirmText: '我知道了',
+							showCancel: false
+						});
+					}
+				},
+				fail: (err) => {
+					console.error('图片上传请求失败:', err);
+					uni.showToast({
+						title: '网络请求失败',
+						icon: 'none',
+						duration: 2000
+					});
+				},
+				complete: () => {
+					this.isSearching = false;
+				}
+			});
+		},
+		
+		// 文本搜索
+		searchByText() {
+			if (!this.searchText.trim()) {
+				uni.showToast({
+					title: '请输入搜索关键词',
+					icon: 'none',
+					duration: 2000
+				});
+				return;
+			}
+			
+			this.isSearching = true;
+			this.loadingText = '正在检索药材...';
+			
+			const apiUrl = getUrlWithParams(API_CONFIG.SEARCH.TEXT, {
+				query: this.searchText,
+				response_type: 'json'
+			});
+			
+			uni.request({
+				url: apiUrl,
+				method: 'GET',
+				success: (res) => {
+					console.log('文本搜索结果:', res.data);
+					
+					if (res.data.herbs && res.data.herbs.length > 0) {
+						const topResult = res.data.herbs[0];
+						console.log('最相似的药材:', topResult.name);
+						
+						const herbData = processHerbData(topResult);
+						this.view3DModel(herbData);
+					} else {
+						uni.showModal({
+							title: '未找到匹配药材',
+							content: '很抱歉,未能找到匹配的中药材。\n\n您可以尝试:\n1. 使用不同的关键词\n2. 尝试更具体的症状或功效描述\n3. 使用图片搜索功能',
+							confirmText: '我知道了',
+							showCancel: false
+						});
+					}
+				},
+				fail: (err) => {
+					console.error('文本搜索请求失败:', err);
+					uni.showToast({
+						title: '网络请求失败',
+						icon: 'none',
+						duration: 2000
+					});
+				},
+				complete: () => {
+					this.isSearching = false;
+				}
+			});
+		},
+		
+		// 快速搜索标签
+		quickSearch(tag) {
+			this.searchText = tag;
+			this.searchByText();
+		},
+		
+		// 阈值变化
+		onThresholdChange(e) {
+			this.relevanceThreshold = e.detail.value;
+		},
+		
+		// 使用建议问题
+		usesuggestion(suggestion) {
+			this.chatInput = suggestion;
+			this.sendQuestion();
+		},
+		
+		// 发送问题
+		sendQuestion() {
+			if (!this.chatInput.trim() || this.isAiAnswering) return;
+			
+			this.chatMessages.push({
+				type: 'user',
+				content: this.chatInput
+			});
+			
+			const question = this.chatInput;
+			this.chatInput = '';
+			this.scrollToBottom();
+			
+			this.isAiAnswering = true;
+			this.loadingText = 'AI思考中...';
+			this.chatMessages.push({
+				type: 'ai',
+				content: '思考中...'
+			});
+			
+			this.getAiAnswer(question);
+		},
+		
+		// 获取AI回答
+		getAiAnswer(question) {
+			console.log('AI问药API请求:', question);
+			
+			const formData = {
+				query: question
+			};
+			
+			uni.request({
+				url: getApiUrl(API_CONFIG.AI.QUERY),
+				method: 'POST',
+				data: formData,
+				header: {
+					'content-type': 'application/x-www-form-urlencoded'
+				},
+				success: (res) => {
+					console.log('AI回答API响应:', res);
+					
+					// 移除"思考中"消息
+					this.chatMessages.pop();
+					
+					if (res.statusCode === 200 && res.data && res.data.answer) {
+						this.chatMessages.push({
+							type: 'ai',
+							content: res.data.answer
+						});
+					} else {
+						this.chatMessages.push({
+							type: 'ai',
+							content: '抱歉，我暂时无法回答您的问题。请稍后再试或换一个问题。'
+						});
+					}
+				},
+				fail: (err) => {
+					console.error('AI回答请求失败:', err);
+					
+					// 移除"思考中"消息
+					this.chatMessages.pop();
+					
+					this.chatMessages.push({
+						type: 'ai',
+						content: '网络请求失败，请检查您的网络连接后重试。'
+					});
+				},
+				complete: () => {
+					this.isAiAnswering = false;
+					this.scrollToBottom();
+				}
+			});
+		},
+		
+		// 滚动到底部
+		scrollToBottom() {
+			this.$nextTick(() => {
+				this.scrollTop = 100000;
+			});
+		},
+		
+		// 加载更多消息（预留功能）
+		loadMoreMessages() {
+			console.log('加载更多历史消息');
+			// 这里可以实现加载更多历史消息的逻辑
+		},
+		
+		// 获取当前日期
+		getCurrentDate() {
+			const now = new Date();
+			const year = now.getFullYear();
+			const month = now.getMonth() + 1;
+			const day = now.getDate();
+			return `${year}年${month}月${day}日`;
+		},
+		
+		// 查看3D模型
+		view3DModel(herb) {
+			view3DModel(herb).catch(err => {
+				console.error('打开3D模型失败:', err);
+				uni.showToast({
+					title: '模型加载失败',
+					icon: 'none',
+					duration: 2000
+				});
+			});
+		}
+	}
+}
+</script>
+
+<style>
+/* 页面基础样式 */
+.page {
+	min-height: 100vh;
+	background-color: #f5f0e7;
+	position: relative;
+}
+
+/* 顶部背景 */
+.header-bg {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 420rpx;
+	overflow: hidden;
+	z-index: 0;
+}
+
+.header-bg-image {
+	width: 100%;
+	height: 100%;
+	opacity: 0.4;
+}
+
+.header-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: linear-gradient(to bottom, rgba(139, 69, 19, 0.7), rgba(139, 69, 19, 0));
+}
+
+/* 标题区域 */
+.header {
+	position: relative;
+	padding: 30rpx;
+	display: flex;
+	align-items: center;
+	z-index: 1;
+}
+
+.logo {
+	width: 100rpx;
+	height: 100rpx;
+	border-radius: 50%;
+	background-color: rgba(255, 255, 255, 0.9);
+	margin-right: 20rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.title-container {
+	flex: 1;
+}
+
+.title {
+	font-size: 36rpx;
+	font-weight: bold;
+	color: #ffffff;
+	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
+}
+
+.subtitle {
+	font-size: 24rpx;
+	color: #f8f8f8;
+	margin-top: 6rpx;
+	opacity: 0.9;
+}
+
+/* 导航栏 */
+.nav-container {
+	display: flex;
+	background-color: #fff;
+	padding: 10rpx 20rpx;
+	border-radius: 16rpx;
+	margin: 0 30rpx;
+	box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.1);
+	position: relative;
+	z-index: 10;
+}
+
+.nav-item {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 20rpx 0;
+	border-radius: 12rpx;
+	transition: all 0.3s;
+}
+
+.nav-item.active {
+	background-color: rgba(141, 110, 99, 0.15);
+}
+
+.nav-icon {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 50%;
+	background-color: #fff;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-bottom: 8rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.nav-item.active .nav-icon {
+	background-color: #8D6E63;
+}
+
+.iconfont {
+	font-size: 44rpx;
+	color: #8D6E63;
+}
+
+.nav-item.active .iconfont {
+	color: #fff;
+}
+
+.nav-text {
+	font-size: 24rpx;
+	color: #5D4037;
+}
+
+/* 内容区域 */
+.content-container {
+	padding: 30rpx;
+	padding-top: 50rpx;
+}
+
+.content-section {
+	padding-bottom: 50rpx;
+}
+
+/* 卡片样式 */
+.card {
+	background-color: #fff;
+	border-radius: 16rpx;
+	overflow: hidden;
+	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+	margin-bottom: 30rpx;
+}
+
+.card-header {
+	padding: 24rpx 30rpx;
+	border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+}
+
+.card-title {
+	font-size: 28rpx;
+	font-weight: bold;
+	color: #5D4037;
+}
+
+.card-body {
+	padding: 30rpx;
+}
+
+/* 图像识别部分 */
+.image-section {
+	margin-bottom: 30rpx;
+}
+
+.image-preview-container {
+	position: relative;
+	width: 100%;
+	height: 400rpx;
+	border-radius: 12rpx;
+	overflow: hidden;
+}
+
+.image-preview {
+	width: 100%;
+	height: 100%;
+}
+
+.image-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.3);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	opacity: 0;
+	transition: opacity 0.3s;
+}
+
+.image-overlay:active {
+	opacity: 1;
+}
+
+.overlay-text {
+	color: white;
+	font-size: 28rpx;
+	padding: 16rpx 32rpx;
+	background-color: rgba(0, 0, 0, 0.5);
+	border-radius: 40rpx;
+}
+
+.image-upload {
+	width: 100%;
+	height: 400rpx;
+	border: 2rpx dashed #BCAAA4;
+	border-radius: 12rpx;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	background-color: #f9f5f2;
+}
+
+.upload-icon {
+	font-size: 80rpx;
+	color: #BCAAA4;
+	margin-bottom: 20rpx;
+}
+
+.upload-text {
+	font-size: 32rpx;
+	color: #8D6E63;
+	margin-bottom: 8rpx;
+}
+
+.upload-desc {
+	font-size: 24rpx;
+	color: #A1887F;
+}
+
+.action-area {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.btn-identify {
+	width: 100%;
+	height: 88rpx;
+	background: linear-gradient(135deg, #A1887F, #8D6E63);
+	border-radius: 44rpx;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	box-shadow: 0 4rpx 12rpx rgba(161, 136, 127, 0.3);
+	border: none;
+}
+
+.btn-identify:active {
+	background: linear-gradient(135deg, #8D6E63, #6D4C41);
+	transform: translateY(2rpx);
+}
+
+.btn-identify[disabled] {
+	background: #D7CCC8;
+	box-shadow: none;
+}
+
+.btn-text {
+	color: white;
+	font-size: 30rpx;
+	font-weight: 500;
+}
+
+.tips-text {
+	font-size: 24rpx;
+	color: #A1887F;
+	margin-top: 20rpx;
+	text-align: center;
+}
+
+/* 提示卡片 */
+.info-card {
+	background-color: #FFF8E1;
+}
+
+.info-item {
+	display: flex;
+	align-items: center;
+	margin-bottom: 16rpx;
+}
+
+.info-item:last-child {
+	margin-bottom: 0;
+}
+
+.info-icon {
+	font-size: 32rpx;
+	color: #FFB300;
+	margin-right: 16rpx;
+}
+
+.info-text {
+	font-size: 26rpx;
+	color: #5D4037;
+}
+
+/* 智能检索部分 */
+.search-container {
+	margin-bottom: 30rpx;
+}
+
+.search-box {
+	display: flex;
+	align-items: center;
+	background-color: #F5F5F5;
+	border-radius: 40rpx;
+	padding: 0 20rpx;
+	margin-bottom: 20rpx;
+}
+
+.search-icon {
+	font-size: 36rpx;
+	color: #8D6E63;
+	margin-right: 10rpx;
+}
+
+.search-input {
+	flex: 1;
+	height: 80rpx;
+	padding: 0 10rpx;
+	font-size: 28rpx;
+	color: #5D4037;
+}
+
+.clear-icon {
+	padding: 10rpx;
+}
+
+.btn-search {
+	width: 100%;
+	height: 88rpx;
+	background: linear-gradient(135deg, #A1887F, #8D6E63);
+	border-radius: 44rpx;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	box-shadow: 0 4rpx 12rpx rgba(161, 136, 127, 0.3);
+	border: none;
+}
+
+.btn-search:active {
+	background: linear-gradient(135deg, #8D6E63, #6D4C41);
+	transform: translateY(2rpx);
+}
+
+.slider-container {
+	margin-top: 40rpx;
+}
+
+.slider-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20rpx;
+}
+
+.slider-title {
+	font-size: 28rpx;
+	color: #5D4037;
+	font-weight: 500;
+}
+
+.slider-value {
+	font-size: 28rpx;
+	color: #8D6E63;
+	font-weight: bold;
+}
+
+.custom-slider {
+	margin-bottom: 12rpx;
+}
+
+.slider-labels {
+	display: flex;
+	justify-content: space-between;
+}
+
+.label-min, .label-max {
+	font-size: 24rpx;
+	color: #A1887F;
+}
+
+/* 标签卡片 */
+.tags-container {
+	display: flex;
+	flex-wrap: wrap;
+	margin: -8rpx;
+}
+
+.tag {
+	background-color: #EFEBE9;
+	border-radius: 30rpx;
+	padding: 12rpx 24rpx;
+	margin: 8rpx;
+}
+
+.tag-text {
+	font-size: 24rpx;
+	color: #5D4037;
+}
+
+/* AI问药部分 */
+.chat-card {
+	padding: 0;
+	margin-bottom: 30rpx;
+	overflow: hidden;
+}
+
+.chat-container {
+	display: flex;
+	flex-direction: column;
+	height: 800rpx;
+}
+
+.chat-messages {
+	flex: 1;
+	padding: 30rpx;
+	background-color: #f2f2f2;
+}
+
+.chat-date {
+	text-align: center;
+	margin-bottom: 30rpx;
+}
+
+.date-text {
+	font-size: 24rpx;
+	color: #9E9E9E;
+	background-color: rgba(0, 0, 0, 0.05);
+	padding: 8rpx 20rpx;
+	border-radius: 20rpx;
+}
+
+.message-wrapper {
+	display: flex;
+	margin-bottom: 30rpx;
+	clear: both;
+}
+
+.message-wrapper.user {
+	flex-direction: row-reverse;
+}
+
+.avatar {
+	width: 60rpx;
+	height: 60rpx;
+	border-radius: 30rpx;
+	background-color: #8D6E63;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-right: 16rpx;
+}
+
+.avatar-text {
+	color: white;
+	font-size: 24rpx;
+	font-weight: bold;
+}
+
+.message-item {
+	max-width: 70%;
+}
+
+.message-content {
+	padding: 16rpx 24rpx;
+	border-radius: 4rpx 20rpx 20rpx 20rpx;
+	background-color: white;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.message-item.user .message-content {
+	border-radius: 20rpx 4rpx 20rpx 20rpx;
+	background-color: #DCE775;
+	box-shadow: 0 2rpx 8rpx rgba(220, 231, 117, 0.3);
+}
+
+.message-time {
+	margin-top: 8rpx;
+}
+
+.time-text {
+	font-size: 22rpx;
+	color: #9E9E9E;
+}
+
+.message-end {
+	height: 20rpx;
+}
+
+.chat-input-area {
+	display: flex;
+	padding: 20rpx;
+	border-top: 1rpx solid #EEEEEE;
+	background-color: white;
+}
+
+.chat-input {
+	flex: 1;
+	height: 80rpx;
+	background-color: #F5F5F5;
+	border-radius: 40rpx;
+	padding: 0 30rpx;
+	font-size: 28rpx;
+	margin-right: 20rpx;
+}
+
+.chat-actions {
+	display: flex;
+}
+
+.btn-voice, .btn-send {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 40rpx;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-left: 10rpx;
+	background-color: #F5F5F5;
+	border: none;
+}
+
+.btn-send {
+	background-color: #8D6E63;
+}
+
+.btn-send[disabled] {
+	background-color: #D7CCC8;
+}
+
+.btn-send .iconfont {
+	color: white;
+}
+
+/* 建议卡片 */
+.suggestion-container {
+	display: flex;
+	flex-direction: column;
+}
+
+.suggestion {
+	background-color: #F5F5F5;
+	border-radius: 12rpx;
+	padding: 20rpx;
+	margin-bottom: 16rpx;
+}
+
+.suggestion:last-child {
+	margin-bottom: 0;
+}
+
+.suggestion-text {
+	font-size: 26rpx;
+	color: #5D4037;
+}
+
+/* 加载指示器 */
+.loading-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.7);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 999;
+}
+
+.loader {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.loader-circle {
+	width: 80rpx;
+	height: 80rpx;
+	border: 4rpx solid rgba(255, 255, 255, 0.3);
+	border-radius: 50%;
+	border-top-color: white;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+.loader-text {
+	margin-top: 30rpx;
+	color: white;
+	font-size: 28rpx;
+}
+
+/* 模拟字体图标类 - 实际项目中请使用真实字体图标 */
+.iconfont.icon-camera:before { content: "📷"; }
+.iconfont.icon-search:before { content: "🔍"; }
+.iconfont.icon-ai:before { content: "🤖"; }
+.iconfont.icon-upload:before { content: "📤"; }
+.iconfont.icon-tips:before { content: "💡"; }
+.iconfont.icon-clear:before { content: "✖"; }
+.iconfont.icon-voice:before { content: "🎤"; }
+.iconfont.icon-send:before { content: "📤"; }
+</style>

@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Model Viewer</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden;  /* 禁用滚动条 */
+            font-family: "ZCOOL XiaoWei", "Noto Serif SC", "Microsoft YaHei", sans-serif;
+        }
+        #container { 
+            width: 100%; 
+            height: 100%; 
+            position: fixed;
+            left: 0;
+            bottom: 0;
+        }
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 44px;
+            background: #8B4513;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .back-button {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            position: relative;
+        }
+        .back-button::after {
+            content: "←";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .back-button:active {
+            opacity: 0.8;
+            background: rgba(255,255,255,0.1);
+        }
+        .title {
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 15px;
+        }
+        .sub-header {
+            position: fixed;
+            top: 44px;
+            left: 0;
+            right: 0;
+            height: 34px;
+            background: #CD9B6A;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+        .sub-title {
+            color: white;
+            font-size: 16px;
+            text-align: center;
+            padding: 0 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .info-panel {
+            position: fixed;
+            top: 78px; /* 44px(标题栏) + 34px(返回栏,减小了高度) */
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 20px; /* 减小内边距 */
+            z-index: 100;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            min-width: 0;
+        }
+        .info-label {
+            font-size: 12px; /* 稍微减小字体 */
+            color: #999;
+            margin-bottom: 2px; /* 减小间距 */
+        }
+        .info-value {
+            font-size: 14px; /* 稍微减小字体 */
+            color: #333;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        /* 功效信息可以占用更多空间 */
+        .info-item.effect {
+            grid-column: span 2;
+        }
+        .loading-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(248, 246, 241, 0.9);
+            z-index: 2000;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e2d8c3;
+            border-top: 5px solid #cd9b6a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        .loading-text {
+            color: #6d533f;
+            font-size: 18px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 标题栏 -->
+    <div class="header">
+        <div class="title" id="herb-title">-</div>
+    </div>
+
+  
+
+    <!-- 信息面板 -->
+    <div class="info-panel">
+        <div class="info-item">
+            <div class="info-label">名称</div>
+            <div class="info-value" id="herb-name">-</div>
+            </div>
+        <div class="info-item">
+            <div class="info-label">拼音</div>
+            <div class="info-value" id="herb-pinyin">-</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">性味</div>
+            <div class="info-value" id="herb-taste">-</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">归经</div>
+            <div class="info-value" id="herb-meridian">-</div>
+        </div>
+        <div class="info-item effect">
+            <div class="info-label">功效</div>
+            <div class="info-value" id="herb-effect">-</div>
+        </div>
+    </div>
+
+    <div id="container"></div>
+
+    <!-- 加载提示 -->
+    <div class="loading-container" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">正在加载3D模型...</div>
+    </div>
+
+    <!-- 添加最早的日志 -->
+    <script>
+        // 定义日志函数
+        function log(message, type = 'info') {
+            console.log(message);
+            if (type === 'error') {
+                alert('错误: ' + message);
+            }
+        }
+
+        // 检查WebGL支持
+        function checkWebGL() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) {
+                    throw new Error('WebGL not supported');
+                }
+                log('WebGL支持检查通过');
+                return true;
+            } catch (e) {
+                log('WebGL not supported: ' + e, 'error');
+                alert('您的浏览器不支持WebGL,无法显示3D模型');
+                return false;
+            }
+        }
+
+        // 检查必要的Three.js组件
+        function checkThreeComponents() {
+            if (typeof THREE === 'undefined') {
+                log('THREE is not defined', 'error');
+                return false;
+            }
+
+            const components = {
+                'Scene': THREE.Scene,
+                'PerspectiveCamera': THREE.PerspectiveCamera,
+                'WebGLRenderer': THREE.WebGLRenderer,
+                'GLTFLoader': THREE.GLTFLoader,
+                'OrbitControls': THREE.OrbitControls
+            };
+            
+            let missingComponents = [];
+            for (let [name, component] of Object.entries(components)) {
+                if (!component) {
+                    missingComponents.push(name);
+                }
+            }
+            
+            if (missingComponents.length > 0) {
+                log('Missing Three.js components: ' + missingComponents.join(', '), 'error');
+                return false;
+            }
+            
+            log('Three.js组件检查通过');
+            return true;
+        }
+
+        // 检查文件是否存在
+        function checkFileExists(url) {
+            return new Promise((resolve, reject) => {
+                fetch(url, { method: 'HEAD' })
+                    .then(response => {
+                        if (response.ok) {
+                            log('文件存在: ' + url);
+                            resolve(true);
+                        } else {
+                            log('文件不存在: ' + url, 'error');
+                            resolve(false);
+                        }
+                    })
+                    .catch(error => {
+                        log('检查文件失败: ' + error, 'error');
+                        resolve(false);
+                    });
+            });
+        }
+
+        // 初始化函数
+        async function init() {
+            try {
+                // 先检查WebGL支持
+                if (!checkWebGL()) {
+                    return;
+                }
+
+                // 检查文件是否存在
+                const files = [
+                    '/static/js/three/three.min.js',
+                    '/static/js/three/OrbitControls.js',
+                    '/static/js/three/GLTFLoader.js'
+                ];
+
+                for (const file of files) {
+                    const exists = await checkFileExists(file);
+                    if (!exists) {
+                        throw new Error('文件不存在: ' + file);
+                    }
+                }
+
+                // 初始化场景
+                log('开始初始化场景');
+                initScene();
+            } catch (error) {
+                log('初始化失败: ' + error, 'error');
+            }
+        }
+
+        // 等待页面加载完成
+        window.addEventListener('load', init);
+    </script>
+
+    <!-- 添加全局错误处理 -->
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            log('JavaScript错误: ' + msg + '\n在 ' + url + ' 第 ' + line + ' 行', 'error');
+            return false;
+        };
+    </script>
+
+    <!-- Three.js库 -->
+    <script src="/static/js/three/three.min.js" 
+            onerror="log('three.min.js加载失败: ' + event.target.src, 'error')"
+            onload="log('three.min.js加载成功')"></script>
+    <script src="/static/js/three/OrbitControls.js"
+            onerror="log('OrbitControls.js加载失败: ' + event.target.src, 'error')"
+            onload="log('OrbitControls.js加载成功')"></script>
+    <script src="/static/js/three/GLTFLoader.js"
+            onerror="log('GLTFLoader.js加载失败: ' + event.target.src, 'error')"
+            onload="log('GLTFLoader.js加载成功')"></script>
+
+    <!-- 场景初始化脚本 -->
+    <script>
+        // 初始化场景函数
+        function initScene() {
+            try {
+        // 从URL获取参数
+        const urlParams = new URLSearchParams(window.location.search);
+                const modelUrl = urlParams.get('model');
+                const herbName = urlParams.get('name') || '未知药材';
+                const herbPinyin = urlParams.get('pinyin') || '-';
+                const herbTaste = urlParams.get('taste') || '-';
+                const herbMeridian = urlParams.get('meridian') || '-';
+                const herbEffect = urlParams.get('effect') || '-';
+                
+                // 更新标题和信息面板
+                document.getElementById('herb-title').textContent = herbName;
+                document.getElementById('herb-name').textContent = herbName;
+                document.getElementById('herb-pinyin').textContent = herbPinyin;
+                document.getElementById('herb-taste').textContent = herbTaste;
+                document.getElementById('herb-meridian').textContent = herbMeridian;
+                document.getElementById('herb-effect').textContent = herbEffect;
+                
+                log('解析到的模型URL: ' + modelUrl);
+                log('完整的页面URL: ' + window.location.href);
+
+                // 检查THREE是否加载成功
+                if (typeof THREE === 'undefined') {
+                    throw new Error('THREE is not defined - three.min.js may not have loaded correctly');
+                }
+                log('THREE对象存在');
+
+        // 初始化场景
+        const scene = new THREE.Scene();
+                scene.background = new THREE.Color(0xe8e0d8);
+                log('场景初始化完成');
+
+        // 创建相机
+        const container = document.getElementById('container');
+        const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(1, 1, 1);
+        camera.lookAt(0, 0, 0);
+                log('相机初始化完成, 位置: ' + JSON.stringify(camera.position));
+
+        // 创建渲染器
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true,
+            alpha: true 
+        });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+                log('渲染器初始化完成');
+
+        // 添加灯光
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+                log('灯光设置完成');
+
+        // 创建控制器
+                if (typeof THREE.OrbitControls === 'undefined') {
+                    throw new Error('OrbitControls is not defined');
+                }
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.minDistance = 0.5;
+        controls.maxDistance = 4;
+                log('控制器初始化完成');
+
+        // 加载模型
+                if (!modelUrl) {
+                    throw new Error('未提供模型URL');
+                }
+
+                if (typeof THREE.GLTFLoader === 'undefined') {
+                    throw new Error('GLTFLoader is not defined');
+                }
+                log('开始加载模型, URL: ' + modelUrl);
+
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            modelUrl,
+            (gltf) => {
+                        log('模型加载成功');
+                
+                // 隐藏加载提示
+                document.getElementById('loading').style.display = 'none';
+                
+                // 添加模型到场景
+                scene.add(gltf.scene);
+                
+                // 计算包围盒
+                const box = new THREE.Box3().setFromObject(gltf.scene);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                        log('模型尺寸: ' + JSON.stringify(size));
+                        log('模型中心点: ' + JSON.stringify(center));
+                
+                // 居中模型
+                gltf.scene.position.x = -center.x;
+                gltf.scene.position.y = -center.y;
+                gltf.scene.position.z = -center.z;
+                
+                // 调整相机
+                const maxDim = Math.max(size.x, size.y, size.z);
+                camera.position.set(maxDim * 1.2, maxDim * 1.2, maxDim * 1.2);
+                camera.lookAt(0, 0, 0);
+                
+                // 设置控制器限制
+                controls.minDistance = maxDim * 0.8;
+                controls.maxDistance = maxDim * 2;
+            },
+            (progress) => {
+                        const percent = (progress.loaded / progress.total * 100).toFixed(2);
+                        log('模型加载进度: ' + percent + '%');
+            },
+            (error) => {
+                        log('模型加载失败, 详细错误: ' + error, 'error');
+                // 隐藏加载提示
+                document.getElementById('loading').style.display = 'none';
+                
+                // 加载失败时显示一个红色立方体
+                const geometry = new THREE.BoxGeometry();
+                const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+            }
+        );
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+                log('动画循环启动');
+
+        // 处理窗口大小变化
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+            } catch (error) {
+                log('场景初始化失败: ' + error.message, 'error');
+                // 隐藏加载提示
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+    </script>
+
+    <!-- uni-app通信脚本 -->
+    <script>
+        // 检查Three.js是否加载成功
+        if (typeof THREE === 'undefined') {
+            log('THREE is not defined - three.min.js may not have loaded correctly', 'error');
+            alert('3D库加载失败,请检查网络连接');
+        }
+
+        // 全局错误处理
+        window.addEventListener('unhandledrejection', function(event) {
+            log('Unhandled promise rejection: ' + event.reason, 'error');
+        });
+
+        // 检测是否在uni-app环境中
+        function isInUniAppEnv() {
+            return window.__uniapp_x_postMessage || window.__uniapp_x_;
+        }
+
+        document.addEventListener('UniAppJSBridgeReady', function() {
+            console.log('UniAppJSBridgeReady');
+            // 处理返回按钮点击
+            document.getElementById('backButton').addEventListener('click', function() {
+                console.log('返回按钮被点击');
+                // 使用 uni.navigateBack 返回
+                uni.navigateBack({
+                    delta: 1,
+                    success: function() {
+                        console.log('返回成功');
+                    },
+                    fail: function(err) {
+                        console.error('返回失败:', err);
+                        // 降级使用 history.back
+                        window.history.back();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

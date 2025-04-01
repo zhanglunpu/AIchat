@@ -1,0 +1,326 @@
+<template>
+	<view class="container">
+		<!-- 加载状态指示器 -->
+		<view class="loading-container" v-if="isLoading">
+			<view class="loading-spinner"></view>
+			<text class="loading-text">页面加载中...</text>
+		</view>
+		
+		<!-- 错误提示 -->
+		<view class="error-container" v-if="loadError">
+			<image class="error-icon" src="/static/images/error.png" mode="aspectFit"></image>
+			<text class="error-text">加载失败</text>
+			<text class="error-desc">{{errorMessage}}</text>
+			<button class="retry-button" type="primary" @click="reload">重试</button>
+			<button class="back-button" @click="goBack">返回</button>
+		</view>
+		
+		<!-- WebView组件 - uni-app-x写法 -->
+		<web-view 
+			id="web-view" 
+			class="uni-flex-item" 
+			:src="url" 
+			:webview-styles="webviewStyles"
+			@message="handleMessage" 
+			@error="handleError"
+			@loading="handleLoading"
+			@load="handleLoad">
+		</web-view>
+		
+		<!-- 导航控制按钮 -->
+		<view class="nav-controls" v-if="showNavControls">
+			<button class="nav-button" type="primary" :disabled="!canGoBack" @click="back">返回</button>
+			<button class="nav-button margin-left-5" type="primary" :disabled="!canGoForward" @click="forward">前进</button>
+			<button class="nav-button margin-left-5" type="primary" @click="reload">刷新</button>
+			<button class="nav-button margin-left-5" type="primary" @click="stop">停止</button>
+		</view>
+	</view>
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				url: '',
+				title: '',
+				isLoading: true,
+				loadError: false,
+				errorMessage: '网页加载失败，请检查网络连接',
+				showNavControls: true, // 是否显示导航控制按钮
+				webviewStyles: {
+					progress: {
+						color: '#2979ff' // 进度条颜色
+					},
+					allowsInlineMediaPlayback: true, // 允许网页内联播放媒体
+					allowsBackForwardNavigationGestures: true, // 允许手势导航
+					allowFileAccess: true, // 允许访问文件
+					allowUniversalAccessFromFileURLs: true, // 允许通用访问
+					allowFileAccessFromFileURLs: true, // 允许文件URL访问
+					mediaPlaybackRequiresUserAction: false // 不需要用户操作就可以自动播放
+				},
+				canGoBack: false,
+				canGoForward: false
+			}
+		},
+		onLoad(options) {
+			console.log('WebView页面加载，接收到的参数:', options);
+			
+			// 获取URL参数
+			if (options.url) {
+				const decodedUrl = decodeURIComponent(options.url);
+				console.log('解码后的URL:', decodedUrl);
+				this.url = decodedUrl;
+			} else {
+				console.error('没有接收到URL参数');
+			}
+			
+			// 设置页面标题
+			if (options.title) {
+				this.title = decodeURIComponent(options.title);
+				console.log('设置页面标题:', this.title);
+				uni.setNavigationBarTitle({
+					title: this.title,
+					success: () => {
+						console.log('标题设置成功');
+					},
+					fail: (err) => {
+						console.error('标题设置失败:', err);
+					}
+				});
+			} else {
+				console.log('没有接收到标题参数，使用默认标题');
+			}
+			
+			console.log('WebView加载URL:', this.url);
+		},
+		onReady() {
+			console.log('WebView页面准备完成');
+			// 在uni-app-x中，不使用createWebviewContext
+		},
+		methods: {
+			// 处理网页开始加载事件
+			handleLoading(event) {
+				console.log('网页开始加载事件触发');
+				console.log('加载事件详情:', JSON.stringify(event.detail));
+				this.isLoading = true;
+				this.loadError = false;
+			},
+			
+			// 处理网页加载完成事件
+			handleLoad(event) {
+				console.log('网页加载完成事件触发');
+				console.log('加载完成事件详情:', JSON.stringify(event.detail));
+				this.isLoading = false;
+				
+				// 检查是否可以前进后退
+				this.checkNavigationState();
+			},
+			
+			// 处理网页发送的消息
+			handleMessage(event) {
+				console.log('收到网页消息事件触发');
+				console.log('消息事件详情:', JSON.stringify(event.detail));
+				
+				if (event.detail.data && event.detail.data.length > 0) {
+					const message = event.detail.data[0];
+					console.log('解析的消息内容:', message);
+					
+					// 处理不同类型的消息
+					if (message.action === 'updateTitle' && message.title) {
+						console.log('收到更新标题消息:', message.title);
+						// 更新页面标题
+						uni.setNavigationBarTitle({
+							title: message.title
+						});
+					} else if (message.action === 'close') {
+						console.log('收到关闭页面消息');
+						// 关闭WebView
+						uni.navigateBack();
+					} else if (message.action === 'modelLoaded') {
+						console.log('收到模型加载状态消息:', message.success ? '成功' : '失败');
+						// 处理模型加载状态
+						if (!message.success) {
+							uni.showToast({
+								title: message.message || '模型加载失败',
+								icon: 'none'
+							});
+						}
+					} else {
+						console.log('收到未知类型的消息:', message.action);
+					}
+				} else {
+					console.log('收到的消息没有数据或数据为空');
+				}
+			},
+			
+			// 处理网页加载错误
+			handleError(event) {
+				console.log('网页加载错误事件触发');
+				console.log('错误事件详情:', JSON.stringify(event.detail));
+				this.isLoading = false;
+				this.loadError = true;
+				this.errorMessage = event.detail.errMsg || '网页加载失败，请检查网络连接';
+			},
+			
+			// 检查导航状态
+			checkNavigationState() {
+				console.log('检查导航状态');
+				// 在uni-app-x中，我们需要通过其他方式获取导航状态
+				// 这里简单设置为true，实际应用中可能需要通过其他API获取
+				this.canGoBack = true;
+				this.canGoForward = false;
+				console.log('导航状态设置为 - 可后退:', this.canGoBack, '可前进:', this.canGoForward);
+			},
+			
+			// 导航控制方法
+			back() {
+				console.log('执行后退操作');
+				uni.navigateBack();
+			},
+			
+			forward() {
+				console.log('执行前进操作');
+				// 在uni-app-x中，我们需要通过其他方式实现前进功能
+				// 目前简单提示用户
+				uni.showToast({
+					title: '前进功能暂不可用',
+					icon: 'none'
+				});
+			},
+			
+			reload() {
+				console.log('执行重新加载操作');
+				this.loadError = false;
+				this.isLoading = true;
+				
+				// 通过重设URL来重新加载页面
+				const tempUrl = this.url;
+				this.url = '';
+				setTimeout(() => {
+					console.log('重设URL:', tempUrl);
+					this.url = tempUrl;
+				}, 100);
+			},
+			
+			stop() {
+				console.log('执行停止加载操作');
+				// 在uni-app-x中，我们需要通过其他方式实现停止加载功能
+				this.isLoading = false;
+			},
+			
+			// 返回上一页
+			goBack() {
+				console.log('返回上一页');
+				uni.navigateBack();
+			}
+		}
+	}
+</script>
+
+<style>
+	.container {
+		width: 100%;
+		height: 100%;
+		flex-direction: column;
+		position: relative;
+	}
+	
+	.uni-flex-item {
+		flex: 1;
+	}
+	
+	.loading-container {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		background: rgba(248, 246, 241, 0.9);
+		z-index: 2000;
+	}
+	
+	.loading-spinner {
+		width: 50px;
+		height: 50px;
+		border: 5px solid #e2d8c3;
+		border-top: 5px solid #cd9b6a;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+		margin-bottom: 20px;
+	}
+	
+	@keyframes spin {
+		0% { transform: rotate(0deg); }
+		100% { transform: rotate(360deg); }
+	}
+	
+	.loading-text {
+		margin-top: 10px;
+		font-size: 14px;
+		color: #666666;
+	}
+	
+	.error-container {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: #ffffff;
+		align-items: center;
+		justify-content: center;
+		z-index: 100;
+	}
+	
+	.error-icon {
+		width: 60px;
+		height: 60px;
+	}
+	
+	.error-text {
+		margin-top: 10px;
+		font-size: 18px;
+		color: #FF3333;
+		font-weight: bold;
+	}
+	
+	.error-desc {
+		margin-top: 5px;
+		font-size: 14px;
+		color: #666666;
+		text-align: center;
+		padding: 0 30px;
+	}
+	
+	.retry-button {
+		margin-top: 20px;
+		width: 120px;
+	}
+	
+	.back-button {
+		margin-top: 10px;
+		width: 120px;
+	}
+	
+	.nav-controls {
+		flex-direction: row;
+		padding: 10px;
+		background-color: #f8f8f8;
+		border-top: 1px solid #eeeeee;
+	}
+	
+	.nav-button {
+		flex: 1;
+		font-size: 14px;
+		height: 35px;
+		line-height: 35px;
+	}
+	
+	.margin-left-5 {
+		margin-left: 5px;
+	}
+</style>

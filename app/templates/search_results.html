@@ -1,0 +1,179 @@
+<!-- 搜索结果区域 -->
+<div id="search-results">
+    {% if herbs %}
+        <!-- 如果是图片搜索结果,显示原图和热力图 -->
+        {% if area_ratio is defined %}
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <svg class="herb-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15 5L18 2M18 2L21 5M18 2V8M10 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M8 6H16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M8 10H16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M8 14H12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        辨识结果分析
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted mb-2">原图</h6>
+                            <div class="border rounded overflow-hidden">
+                                <img src="{{ herbs[0].original_url }}" class="img-fluid" alt="原图">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted mb-2">热力图分析</h6>
+                            <div class="border rounded overflow-hidden">
+                                <img src="{{ herbs[0].heatmap_url }}" class="img-fluid" alt="热力图">
+                            </div>
+                            <p class="text-muted small mt-1 fst-italic">热力图显示了AI模型关注的区域，红色区域表示模型重点关注的特征</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 面积比警告 -->
+                    <div id="area-ratio-warning" class="alert alert-warning mt-3 {% if area_ratio >= 0.1 %}d-none{% endif %}">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                            </div>
+                            <div>
+                                <h6 class="alert-heading">检测到的主要物体面积比例较小 ({{ "%.1f"|format(area_ratio * 100) }}%)</h6>
+                                <p>为获得更准确的辨识结果，建议：</p>
+                                <ul>
+                                    <li>将药材放置在图像中心位置</li>
+                                    <li>确保药材占据图像的合适面积（建议>10%）</li>
+                                    <li>保持光线充足，避免阴影干扰</li>
+                                    <li>选择简洁背景，减少干扰元素</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- 搜索结果列表 -->
+        <div class="mb-4">
+            <h5 class="mb-3" style="color: #6d533f; display: flex; align-items: center;">
+                <svg class="herb-icon me-2" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 12H15M9 16H15M17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H12.5858C12.851 3 13.1054 3.10536 13.2929 3.29289L18.7071 8.70711C18.8946 8.89464 19 9.149 19 9.41421V19C19 20.1046 18.1046 21 17 21Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M13 3V7C13 8.10457 13.8954 9 15 9H19" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                匹配结果 ({{ herbs|length }}项)
+            </h5>
+            
+            <div class="row">
+                {% for herb in herbs %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="position-relative">
+                                <img src="/static/images/{{ herb.image }}" 
+                                     class="card-img-top" 
+                                     style="height: 200px; object-fit: cover;"
+                                     alt="{{ herb.name }}">
+                                {% if herb.score is defined %}
+                                    <div class="position-absolute top-0 end-0 m-2">
+                                        <span class="badge rounded-pill" style="background-color: rgba(240, 236, 224, 0.9); color: #6d533f; border: 1px solid #a07e56;">
+                                            相似度: {{ "%.0f"|format(herb.score * 100) }}%
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title border-bottom-0 pb-0 mb-1">{{ herb.name }}</h5>
+                                {% if herb.pinyin %}
+                                    <p class="text-muted small mb-2">{{ herb.pinyin }}</p>
+                                {% endif %}
+                                
+                                {% if herb.score is defined %}
+                                    <div class="row g-2 mt-2 mb-2">
+                                        {% if herb.clip_score is defined %}
+                                            <div class="col-6">
+                                                <div class="p-1 rounded small" style="background-color: #f8f6f1; border: 1px solid #e2d8c3;">
+                                                    <span class="text-muted">CLIP得分:</span>
+                                                    <span class="fw-medium" style="color: #6d533f;">{{ "%.0f"|format(herb.clip_score * 100) }}%</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-1 rounded small" style="background-color: #f8f6f1; border: 1px solid #e2d8c3;">
+                                                    <span class="text-muted">ResNet得分:</span>
+                                                    <span class="fw-medium" style="color: #6d533f;">{{ "%.0f"|format(herb.resnet_score * 100) }}%</span>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="card-text small text-muted border-top pt-2 mt-2">
+                                    {{ herb.description[:100] }}...
+                                </div>
+                                
+                                {% if herb.model_file %}
+                                    <div class="mt-3">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary model-view-btn"
+                                                data-herb-id="{{ herb.id }}"
+                                                onclick="window.dispatchEvent(new CustomEvent('show3DModel', {
+                                                    detail: {
+                                                        herbId: '{{ herb.id }}',
+                                                        name: '{{ herb.name }}',
+                                                        alias: '{{ herb.alias }}',
+                                                        pinyin: '{{ herb.pinyin }}',
+                                                        taste: '{{ herb.taste }}',
+                                                        meridian: '{{ herb.meridian }}',
+                                                        effect: '{{ herb.effect }}',
+                                                        indication: '{{ herb.indication }}',
+                                                        origin: '{{ herb.origin }}',
+                                                        harvest: '{{ herb.harvest }}',
+                                                        process: '{{ herb.process }}'
+                                                    }
+                                                }))">
+                                            <i class="fas fa-cube me-1"></i>
+                                            查看3D模型
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <div class="d-flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                </div>
+                <div>
+                    <h6 class="alert-heading">未找到相关结果</h6>
+                    <p class="mb-0">请尝试使用不同的关键词或上传清晰的药材图片</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    // 自动显示第一个结果的3D模型
+    {% if herbs and herbs|length > 0 and herbs[0].id and herbs[0].model_file %}
+        console.log('Found first model, dispatching event for ID:', '{{ herbs[0].id }}');
+        window.dispatchEvent(new CustomEvent('show3DModel', {
+            detail: {
+                herbId: '{{ herbs[0].id }}',
+                name: '{{ herbs[0].name }}',
+                alias: '{{ herbs[0].alias }}',
+                pinyin: '{{ herbs[0].pinyin }}',
+                taste: '{{ herbs[0].taste }}',
+                meridian: '{{ herbs[0].meridian }}',
+                effect: '{{ herbs[0].effect }}',
+                indication: '{{ herbs[0].indication }}',
+                origin: '{{ herbs[0].origin }}',
+                harvest: '{{ herbs[0].harvest }}',
+                process: '{{ herbs[0].process }}'
+            }
+        }));
+    {% else %}
+        console.log('No herbs found or first herb has no model file');
+    {% endif %}
+</script> 

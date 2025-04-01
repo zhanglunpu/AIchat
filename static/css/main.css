@@ -1,0 +1,45 @@
+/* 自定义滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* 图片上传区域hover效果 */
+.file-upload-area:hover {
+    border-color: #3b82f6;
+}
+
+/* 3D模型查看器动画 */
+.model-viewer-enter {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.model-viewer-enter-active {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 300ms, transform 300ms;
+}
+
+.model-viewer-exit {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.model-viewer-exit-active {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 300ms, transform 300ms;
+} 
